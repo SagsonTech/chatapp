@@ -19,15 +19,15 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
     },
     profilePicture: {
-      url: {
-        type: String,
-        default: "",
-      },
-      public_id: {
-        type: String,
-        default: "",
-      },
+      type: String,
+      default: "",
     },
+    friends: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   { timestamps: true },
 );
