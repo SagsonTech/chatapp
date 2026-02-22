@@ -6,9 +6,7 @@ import bcrypt from "bcrypt";
 import asyncErrorHandlerMiddleware from "../middlewares/asyncErrorHandler.middleware";
 import jwt from "jsonwebtoken";
 import envVars from "../config/envVars.config";
-import {
-  IAuthTokenPayload
-} from "../interfaces/auth.interfaces";
+import { IAuthTokenPayload } from "../interfaces/auth.interfaces";
 import cloudinary from "../config/cloudinary.config";
 
 class AuthController {
@@ -147,21 +145,29 @@ class AuthController {
     },
   );
 
-  public updateProfileInfo = async (req: Request, res: Response) => {
-    const { username } = req.body;
-    const userId = (req as any).user.userId;
+  public updateProfileInfo = asyncErrorHandlerMiddleware(
+    async (req: Request, res: Response) => {
+      const { username } = req.body;
+      const userId = (req as any).user.userId;
 
+      const user = await User.findById(userId);
+      if (!user) throw new AppError("User not found", 404);
+
+      user.username = username;
+      await user.save();
+
+      return res.status(200).json({
+        username,
+        message: "Profile information updated successfully",
+        success: true,
+      });
+    },
+  );
+
+  // internal function
+  public getUserById = async (userId: string) => {
     const user = await User.findById(userId);
-    if (!user) throw new AppError("User not found", 404);
-
-    user.username = username;
-    await user.save();
-
-    return res.status(200).json({
-      username,
-      message: "Profile information updated successfully",
-      success: true,
-    });
+    return user;
   };
 
   private generateToken(payload: IAuthTokenPayload) {

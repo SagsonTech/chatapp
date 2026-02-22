@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { InferSchemaType } from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
@@ -24,13 +24,25 @@ const userSchema = new mongoose.Schema(
     },
     friends: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        id: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        isBlocked: {
+          type: Boolean,
+          default: false,
+        },
+        friendsFrom: {
+          type: Date,
+          default: new Date(),
+        },
       },
     ],
   },
   { timestamps: true },
 );
+
+export type userType = InferSchemaType<typeof userSchema>;
 
 const User = mongoose.model("User", userSchema);
 

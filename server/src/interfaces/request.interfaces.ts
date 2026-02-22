@@ -7,6 +7,7 @@ export type RequestStatusType =
   | "cancelled";
 
 export interface IRequestResponsePayload {
+  requestId: string;
   toUser: IUserDataPayload;
   status: RequestStatusType;
   sentTime: Date;

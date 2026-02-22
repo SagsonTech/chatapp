@@ -71,27 +71,139 @@ class RequestsController {
     },
   );
 
-  public recievedRequests = async (req: Request, res: Response) => {
-    const userId = (req as any).userId;
-    const user = await User.findById(userId);
+  public recievedRequests = asyncErrorHandlerMiddleware(
+    async (req: Request, res: Response) => {
+      const userId = (req as any).userId;
+      const user = await User.findById(userId);
 
-    if (!user) throw new AppError("User not found", 404);
+      if (!user) throw new AppError("User not found", 404);
 
-    const recievedRequests = await RequestModel.find({
-      toId: userId,
-    });
+      const recievedRequests = await RequestModel.find({
+        toId: userId,
+      });
 
-    const requests = await Promise.all(
-      recievedRequests.map(async (request) => {
-        const requestPayload = await this.createRequestPayload(request, false);
-        return requestPayload;
-      }),
-    );
+      const requests = await Promise.all(
+        recievedRequests.map(async (request) => {
+          const requestPayload = await this.createRequestPayload(
+            request,
+            false,
+          );
+          return requestPayload;
+        }),
+      );
 
-    return res.status(200).json({
-      recievedRequests: requests,
-      success: true,
-    });
+      return res.status(200).json({
+        recievedRequests: requests,
+        success: true,
+      });
+    },
+  );
+
+  public acceptRequest = asyncErrorHandlerMiddleware(
+    async (req: Request, res: Response) => {
+      const { requestId } = req.params;
+      if (!requestId) throw new AppError("Request ID was not provided", 401);
+
+      const userId = (req as any).userId;
+
+      const request = await RequestModel.findById(requestId);
+      if (!request) throw new AppError("Request not found", 404);
+
+      const isValidAccess = await this.validateRequestAccess(
+        request,
+        "accept",
+        userId,
+      );
+      if (!isValidAccess) throw new AppError("Invalid Access", 401);
+
+      const toUser = await User.findById(request.toId);
+      const fromUser = await User.findById(request.fromId);
+
+      if (!fromUser || !toUser) throw new AppError("User not found", 404);
+
+      toUser.friends.push(request.fromId);
+      fromUser.friends.push(request.toId);
+      request.status = "accepted";
+
+      await toUser.save();
+      await fromUser.save();
+      await request.save();
+
+      return res.status(200).json({
+        message: `You have accepted the friend request from ${fromUser.username}`,
+        success: true,
+      });
+    },
+  );
+
+  public declineRequest = asyncErrorHandlerMiddleware(
+    async (req: Request, res: Response) => {
+      const { requestId } = req.params;
+      if (!requestId) throw new AppError("Request ID was not provided", 401);
+
+      const userId = (req as any).userId;
+
+      const request = await RequestModel.findById(requestId);
+      if (!request) throw new AppError("Request not found", 404);
+
+      const isValidAccess = await this.validateRequestAccess(
+        request,
+        "decline",
+        userId,
+      );
+      if (!isValidAccess) throw new AppError("Invalid Access", 401);
+
+      request.status = "declined";
+      await request.save();
+
+      res.status(200).json({
+        message: `You have declined a friend request`,
+        success: true,
+      });
+    },
+  );
+
+  public cancelRequest = asyncErrorHandlerMiddleware(
+    async (req: Request, res: Response) => {
+      const { requestId } = req.params;
+      if (!requestId) throw new AppError("Request ID was not provided", 401);
+
+      const userId = (req as any).userId;
+
+      const request = await RequestModel.findById(requestId);
+      if (!request) throw new AppError("Request not found", 404);
+
+      const isValidAccess = await this.validateRequestAccess(
+        request,
+        "cancel",
+        userId,
+      );
+      if (!isValidAccess) throw new AppError("Invalid Access", 401);
+
+      request.status = "cancelled";
+      await request.save();
+
+      res.status(200).json({
+        message: `You have cancelled an outgoing friend request`,
+        success: true,
+      });
+    },
+  );
+
+  private validateRequestAccess = async (
+    request: any,
+    action: "accept" | "decline" | "cancel",
+    userId: string,
+  ) => {
+    let isValid: boolean;
+
+    if (action === "accept" || action === "decline") {
+      isValid = userId == request.toId.toString();
+    } else {
+      isValid = userId == request.fromId.toString();
+    }
+
+    return isValid;
   };
 
   private createRequestPayload = async (
@@ -107,6 +219,7 @@ class RequestsController {
     }
 
     const requestPayload: IRequestResponsePayload = {
+      requestId: request._id.toString(),
       toUser: {
         userId: user ? user._id.toString() : "",
         username: user ? user.username : "Chatapp User",

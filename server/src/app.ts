@@ -7,6 +7,7 @@ import authRoute from "./routes/auth.route";
 import connectDB from "./config/db.config";
 import requestsRoute from "./routes/requests.route";
 import authMiddleware from "./middlewares/auth.middleware";
+import friendsRoute from "./routes/friends.route";
 
 const app = express();
 connectDB();
@@ -16,6 +17,7 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoute);
 app.use("/api/requests", authMiddleware, requestsRoute);
+app.use("/api/friends", authMiddleware, friendsRoute);
 
 app.use(errorHandlerMiddleware);
 
