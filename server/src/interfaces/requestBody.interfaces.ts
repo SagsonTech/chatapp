@@ -8,3 +8,8 @@ export interface ILoginBody {
   email: string;
   password: string;
 }
+
+export interface IMessageBody {
+  messageText: string;
+  attachmentImage: string;
+}
