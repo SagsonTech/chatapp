@@ -11,8 +11,6 @@ router.get("/:conversationId", messageController.getAllMessages);
 router.post("/:conversationId", messageController.sendMessage);
 
 // delete a message
-router.put("/delete/:messageId", (req: Request, res: Response) => {
-  res.send("Delete a message");
-});
+router.put("/delete/:messageId", messageController.deleteMessage);
 
 export default router;

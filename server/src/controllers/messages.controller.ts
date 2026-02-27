@@ -76,6 +76,29 @@ class MessageController {
     },
   );
 
+  public deleteMessage = asyncErrorHandlerMiddleware(async (req: Request, res: Response) => {
+    const { messageId } = req.params;
+    const userId = (req as any).userId as string;
+    if (!messageId) throw new AppError("Message ID was not provided", 403);
+
+    const message = await Message.findById(messageId);
+    if (!message) throw new AppError("Message not found", 404);
+
+    if (message.senderId.toString() !== userId) throw new AppError("You cannot delete the message since you are not the sender", 401);
+
+    message.status = "deleted";
+    await message.save();
+
+    const conversation = await Conversation.findById(message.conversationId);
+    if (!conversation) throw new AppError("No conversation is attached with the message", 403);
+
+    res.status(200).json({
+      messageStatus: message.status,
+      message: "The message was deleted successfully",
+      success: true
+    });
+  });
+
   private createMessagePayload = async (
     messages: any[],
     members: mongoose.Types.ObjectId[],
@@ -90,8 +113,8 @@ class MessageController {
         sender: memberPayloads.filter(
           (m) => m._id.toString() === message.senderId.toString(),
         ),
-        messageText: message.messageText,
-        attachmentImage: message.attachmentImage,
+        messageText: message.status == "deleted" ? "This message was deleted" : message.messageText,
+        attachmentImage: message.status == "deleted" ? "This message was deleted" : message.attachmentImage,
         sentAt: message.createdAt,
         status: message.status,
       };
